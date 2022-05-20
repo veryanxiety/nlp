@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from sklearn.base import TransformerMixin
 from typing import List, Union
 import numpy as np
@@ -28,10 +28,14 @@ class BoW(TransformerMixin):
         # task: find up to self.k most frequent tokens in texts_train,
         # sort them by number of occurences (highest first)
         # store most frequent tokens in self.bow
-        raise NotImplementedError
+        counter = Counter()
+        for text in X:
+            counter.update(text.split(' '))
 
+        self.bow = [x[0] for x in counter.most_common(self.k)]
         # fit method must always return self
         return self
+    
 
     def _text_to_bow(self, text: str) -> np.ndarray:
         """
@@ -40,8 +44,8 @@ class BoW(TransformerMixin):
         :return bow_feature: feature vector, made by bag of words
         """
 
-        result = None
-        raise NotImplementedError
+        counter = Counter(text.split())
+        result = [counter.get(token, 0) for token in self.bow]
         return np.array(result, "float32")
 
     def transform(self, X: np.ndarray, y=None) -> np.ndarray:
@@ -80,7 +84,12 @@ class TfIdf(TransformerMixin):
         """
         :param X: array of texts to be trained on
         """
-        raise NotImplementedError
+        n = len(X)
+        _counter = Counter()
+        for text in X:
+            _counter.update(set(text.split()))
+        for term, df in _counter.most_common(self.k):
+            self.idf[term] = np.log(n / (df + 1))
 
         # fit method must always return self
         return self
@@ -93,9 +102,14 @@ class TfIdf(TransformerMixin):
         :return tf_idf: tf-idf features
         """
 
-        result = None
-        raise NotImplementedError
-        return np.array(result, "float32")
+        counter = Counter(text.split())
+        result = [counter.get(token, 0) / idf for token, idf in self.idf.items()]        
+        result = np.array(result, "float32")
+        if self.normalize:
+            norm = np.linalg.norm(result)
+            if norm != 0:
+                result /= np.linalg.norm(result)
+        return result
 
     def transform(self, X: np.ndarray, y=None) -> np.ndarray:
         """
